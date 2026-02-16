@@ -156,7 +156,7 @@ const emailHtml = (name) => `<!DOCTYPE html>
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#132d42;border:1px solid #1a3347;border-left:3px solid #F05324;border-radius:14px;" bgcolor="#132d42">
         <tr>
             <td width="54" style="padding:14px 0 14px 14px;vertical-align:middle;">
-                <div style="width:38px;height:38px;border-radius:10px;background-color:#3d2015;text-align:center;line-height:38px;">📊</div>
+                <div style="width:38px;height:38px;border-radius:10px;background-color:#3d2015;text-align:center;line-height:38px;"><img src="${ICON_BASE}/performance.png" alt="" width="16" height="16" style="vertical-align:middle;border:0;"></div>
             </td>
             <td style="padding:14px 8px;vertical-align:middle;">
                 <p style="margin:0;font-size:14px;font-weight:700;color:#F05324;">შედეგების მართვა</p>
@@ -250,29 +250,65 @@ exports.handler = async function(event) {
   const data = payload.payload.data;
 
   const name = data.name || '';
+  const company = data.company || '';
+  const phone = data.phone || '';
   const recipientEmail = data.email;
 
-  if (!recipientEmail) {
-    console.log('No email provided, skipping email send');
-    return { statusCode: 200, body: 'No email to send to' };
+  const NOTIFY_EMAIL = 'lkereselidze@gecbusiness.com';
+
+  // Send branded email to registrant
+  if (recipientEmail) {
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: `GEC Business Growth Services <${NOTIFY_EMAIL}>`,
+        to: [recipientEmail],
+        subject: 'GEC — ბიზნესის ზრდის სერვისები',
+        html: emailHtml(name),
+      }),
+    });
+    const result = await response.json();
+    console.log('Resend (to registrant):', result);
   }
 
-  const response = await fetch('https://api.resend.com/emails', {
+  // Send notification to GEC team
+  const contactInfo = [
+    name && `სახელი: ${name}`,
+    company && `კომპანია: ${company}`,
+    recipientEmail && `ელ-ფოსტა: ${recipientEmail}`,
+    phone && `ტელეფონი: ${phone}`,
+  ].filter(Boolean).join('\n');
+
+  const notifyHtml = `
+    <div style="font-family:Arial,sans-serif;padding:20px;background:#0d2233;color:#fff;border-radius:12px;">
+      <h2 style="color:#049978;margin:0 0 16px;">ახალი რეგისტრაცია</h2>
+      <table style="font-size:14px;color:#ccc;border-collapse:collapse;">
+        ${name ? `<tr><td style="padding:6px 16px 6px 0;color:#8494a7;">სახელი:</td><td style="padding:6px 0;color:#fff;font-weight:600;">${name}</td></tr>` : ''}
+        ${company ? `<tr><td style="padding:6px 16px 6px 0;color:#8494a7;">კომპანია:</td><td style="padding:6px 0;color:#fff;font-weight:600;">${company}</td></tr>` : ''}
+        ${recipientEmail ? `<tr><td style="padding:6px 16px 6px 0;color:#8494a7;">ელ-ფოსტა:</td><td style="padding:6px 0;"><a href="mailto:${recipientEmail}" style="color:#049978;">${recipientEmail}</a></td></tr>` : ''}
+        ${phone ? `<tr><td style="padding:6px 16px 6px 0;color:#8494a7;">ტელეფონი:</td><td style="padding:6px 0;"><a href="tel:${phone}" style="color:#049978;">${phone}</a></td></tr>` : ''}
+      </table>
+    </div>`;
+
+  const notifyResponse = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: 'GEC Business Growth Services <lkereselidze@gecbusiness.com>',
-      to: [recipientEmail],
-      subject: 'GEC — ბიზნესის ზრდის სერვისები',
-      html: emailHtml(name),
+      from: `GEC Linktree <${NOTIFY_EMAIL}>`,
+      to: [NOTIFY_EMAIL],
+      subject: `ახალი რეგისტრაცია: ${name || recipientEmail || phone || 'უცნობი'}`,
+      html: notifyHtml,
     }),
   });
+  const notifyResult = await notifyResponse.json();
+  console.log('Resend (notification):', notifyResult);
 
-  const result = await response.json();
-  console.log('Resend response:', result);
-
-  return { statusCode: response.ok ? 200 : 500, body: JSON.stringify(result) };
+  return { statusCode: 200, body: 'OK' };
 };

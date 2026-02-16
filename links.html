@@ -705,8 +705,9 @@ svg{display:block;}
             <button class="modal-close" onclick="document.getElementById('contactModal').classList.remove('open')">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
-            <form class="modal-form" id="contactForm" name="contact" method="POST" data-netlify="true" onsubmit="return submitContact(event)">
+            <form class="modal-form" id="contactForm" name="contact" method="POST" data-netlify="true" data-netlify-honeypot="bot-field" onsubmit="return submitContact(event)">
                 <input type="hidden" name="form-name" value="contact">
+                <p style="display:none"><input name="bot-field"></p>
                 <div class="modal-title">დატოვე საკონტაქტო</div>
                 <div class="modal-desc">შეავსე ერთი ველი მაინც და GEC-ის გუნდი დაგიკავშირდება</div>
                 <div class="modal-field">
@@ -761,7 +762,7 @@ function submitContact(e) {
         return false;
     }
     var form = document.getElementById('contactForm');
-    fetch('/', {
+    fetch('/links.html', {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
         body: new URLSearchParams(new FormData(form)).toString()
